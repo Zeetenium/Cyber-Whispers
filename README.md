@@ -4,8 +4,9 @@
 <h1 align="center">Cyber Whispers : 轻量级赛博朋克风留言墙</h1>
 
 <p align="center">
-<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
+<a href="https://github.com/Zeetenium/Cyber-Whispers/releases/latest"><img src="https://img.shields.io/github/v/release/Zeetenium/Cyber-Whispers?label=Download&color=brightgreen&style=flat&logo=android" alt="Download"></a>
 <a href="#-欢迎贡献"><img src="https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg" alt="Contributions Welcome"></a>
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
 <img src="https://img.shields.io/badge/UniApp%20X-2B993A?style=flat&logo=uniapp&logoColor=white" alt="UniApp X">
 <img src="https://img.shields.io/badge/Vue%203-4FC08D?style=flat&logo=vue.js&logoColor=white" alt="Vue 3">
 <img src="https://img.shields.io/badge/UTS-blue?style=flat" alt="UTS">
