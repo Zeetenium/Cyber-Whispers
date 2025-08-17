@@ -1,0 +1,12 @@
+// 将文件重命名为config.json 根据你自己的邮箱替换host user pass等（注:pass指的是你邮箱的SMTP授权码）
+{
+    "netease": {
+        "host": "smtp.163.com",
+        "port": 465,
+        "secure": true,
+        "auth": {
+            "user": "your-email",
+            "pass": "your-email-smtp-code"
+        }
+    }
+}

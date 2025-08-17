@@ -1,0 +1,13 @@
+{
+    "name": "email-validate-code",
+    "dependencies": {
+        "nodemailer": "6.4.10"
+    },
+    "extensions": {
+        "uni-cloud-jql": {}
+    },
+    "origin-plugin-dev-name": "email-validate-code",
+    "origin-plugin-version": "1.11.0",
+    "plugin-dev-name": "email-validate-code",
+    "plugin-version": "1.11.0"
+}

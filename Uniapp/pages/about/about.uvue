@@ -1,0 +1,299 @@
+<template>
+	<view class="about-page">
+		<view class="close-button" @click="handleClose">
+			<text class="close-icon">×</text>
+		</view>
+
+		<view class="about-header">
+			<text class="main-title">Cyber Whisper</text>
+			<text class="sub-title">关于本项目</text>
+		</view>
+
+		<scroll-view class="content-scroll">
+			<view class="dossier-content">
+
+				<view class="section-block">
+					<text class="section-title">项目概述</text>
+					<text class="paragraph">
+						欢迎来到「Cyber Whisper」，一个赛博朋克风格的公共信息广播站。
+						在这里，你可以向公共信道投递一条讯息，并自由选择你的数字身份：
+						无论是作为用户发声，使用临时的代号，还是彻底隐匿于匿名的洪流中。
+						你的每一次广播，都可能收获他人的回响——无论是简单的“点赞”共鸣，还是深入的“回复”交流。
+						而你的每一次发声，都将沉淀为你独有的数字档案，记录下你向这片空间投出的每一个讯号。
+					</text>
+					<view class="tech-item" style="margin-top: 20rpx;">
+						<text class="tech-key">当前版本:</text>
+						<text class="tech-value">v1.0.0</text>
+					</view>
+				</view>
+
+				<view class="section-block">
+					<text class="section-title">技术栈解构</text>
+					<view class="tech-item">
+						<text class="tech-key">总体架构:</text>
+						<text class="tech-value">Hybrid App (UniApp X + WebView H5)</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">移动端技术:</text>
+						<text class="tech-value">Uvue + UniApp X CSS子集 + Uts</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">移动端插件:</text>
+						<text class="tech-value">Email-validate-code</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">H5模块技术:</text>
+						<text class="tech-value">Vue3 + CSS3 + Js</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">H5端组件:</text>
+						<text class="tech-value">Vue-datepicker-next</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">后端服务:</text>
+						<text class="tech-value">UniCloud</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">数据库:</text>
+						<text class="tech-value">UniCloud DB (NoSQL)</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">开发模式:</text>
+						<text class="tech-value">云端一体化开发</text>
+					</view>
+				</view>
+
+				<view class="section-block">
+					<text class="section-title">相关档案</text>
+					<view class="tech-item" @click="copyLink('/')">
+						<text class="tech-key">开发纪实:</text>
+						<text class="tech-value link-style">掘金博客</text>
+					</view>
+					<view class="tech-item" @click="copyLink('https://github.com/Zeetenium/Cyber-Whispers/')">
+						<text class="tech-key">源码矩阵:</text>
+						<text class="tech-value link-style">Github仓库</text>
+					</view>
+				</view>
+
+				<view class="section-block">
+					<text class="section-title">开发者</text>
+					<view class="tech-item">
+						<text class="tech-key">名称:</text>
+						<text class="tech-value">Zeetenium</text>
+					</view>
+					<view class="tech-item" @click="copyLink('3085520689')">
+						<text class="tech-key">QQ号:</text>
+						<text class="tech-value link-style">3085520689</text>
+					</view>
+					<view class="tech-item" @click="copyLink('zeetenium@outlook.com')">
+						<text class="tech-key">邮箱:</text>
+						<text class="tech-value link-style">zeetenium@outlook.com</text>
+					</view>
+				</view>
+
+				<view class="section-block">
+					<text class="section-title">鸣谢列表</text>
+					<view class="tech-item" @click="copyLink('https://www.huohuo90.com:3002/')">
+						<text class="tech-key">灵感来源:</text>
+						<text class="tech-value link-style">一刻时光</text>
+					</view>
+					<view class="tech-item">
+						<text class="tech-key">测试人员:</text>
+						<text class="tech-value">@被淹死的鱼 @传说中的魔法少女ビースト @yuyu @柯.</text>
+					</view>
+				</view>
+
+				<view class="section-block">
+					<text class="section-title">开源许可证</text>
+					<view class="tech-item">
+						<text class="tech-key">许可协议:</text>
+						<text class="tech-value">MIT License</text>
+					</view>
+					<text class="paragraph">Copyright (c) 2025 Zeetenium</text>
+					<text
+						class="paragraph">特此授权，任何获得本软件及其相关文档文件（“软件”）副本的人，可以免费使用、复制、修改、合并、发布、分发、再授权和/或销售该软件的副本，并允许获得软件的人员这样做，但须符合以下条件：</text>
+					<text class="paragraph">上述版权声明和本许可声明应包含在所有副本或实质性部分中。</text>
+					<text
+						class="paragraph">本软件按“原样”提供，不作任何明示或暗示的保证，包括但不限于对适销性、特定用途适用性和非侵权性的保证。在任何情况下，作者或版权持有人均不对任何索赔、损害或其他责任承担任何责任，无论是在合同诉讼、侵权行为还是其他方面，由软件或与软件的使用或其他交易引起、产生或与之相关。</text>
+				</view>
+
+				<view class="section-block">
+					<text class="section-title">隐私政策</text>
+					<text class="paragraph">本政策更新于：2025年07月31日</text>
+					<text class="paragraph">「Cyber
+						Whisper」尊重并保护所有使用服务用户的个人隐私权。为了给您提供更准确、更有个性化的服务，本应用会按照本隐私权政策的规定使用和披露您的个人信息。</text>
+
+					<text class="policy-sub-title">1. 信息收集</text>
+					<text class="paragraph">当您注册账户时，我们会收集您的电子邮件地址，用于账户验证和身份识别。您在使用服务时发布的留言、评论等信息将被存储在我们的服务器上。</text>
+
+					<text class="policy-sub-title">2. 信息使用</text>
+					<text class="paragraph">我们使用收集到的信息来运营和维护应用功能、与您沟通、进行身份验证并防止滥用行为。</text>
+
+					<text class="policy-sub-title">3. 信息共享</text>
+					<text class="paragraph">我们不会与任何第三方公司、组织和个人分享您的个人信息，但以下情况除外：
+						- 获得您的明确同意后；
+						- 根据法律法规的强制性要求。</text>
+
+					<text class="policy-sub-title">4. 数据安全</text>
+					<text class="paragraph">我们使用 UniCloud 提供的云端一体化服务来存储您的数据，并会采取一切合理可行的措施，保护您的个人信息安全。</text>
+
+					<text class="policy-sub-title">5. 政策更新</text>
+					<text class="paragraph">我们可能会适时更新本隐私政策。任何重大变更我们都会在本页面上发布通知。</text>
+
+					<text class="policy-sub-title">6. 联系我们</text>
+					<text class="paragraph">如果您对本隐私政策有任何疑问，请通过 zeetenium@outlook.com 与我们联系。</text>
+				</view>
+				
+				<view class="section-block">
+					<text class="section-title">资源版权声明</text>
+					<text class="paragraph">本项目为个人练习开源项目，非商业用途，其中使用的部分图标、字体等设计资源来源于网络。
+					若本项目中使用的资源侵犯了您的合法权益，请通过 zeetenium@outlook.com 与我们联系。我们将第一时间进行删除或按照您的要求署名。</text>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup>
+	const handleClose = () => {
+		uni.navigateBack();
+	};
+
+	const copyLink = (url:string) => {
+		uni.setClipboardData({
+			data: url,
+			success: () => {
+				uni.showToast({
+					title: '链接已复制',
+					icon: 'none'
+				});
+			},
+			fail: () => {
+				uni.showToast({
+					title: '复制失败',
+					icon: 'none'
+				});
+			}
+		});
+	};
+</script>
+
+<style>
+	.about-page {
+		background-color: #050510;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+	}
+
+	.about-header {
+		padding-top: 130rpx;
+		padding-bottom: 50rpx;
+		padding-left: 40rpx;
+		padding-right: 40rpx;
+		background-color: #060616;
+		border-bottom: 2rpx solid #1a1a2e;
+		flex-shrink: 0;
+	}
+
+	.main-title {
+		font-size: 52rpx;
+		font-weight: bold;
+		color: #00e4ff;
+		margin-bottom: 16rpx;
+		display: flex;
+		font-family: monospace;
+	}
+
+	.sub-title {
+		font-size: 26rpx;
+		color: #8892b0;
+		display: flex;
+	}
+
+	.close-button {
+		position: absolute;
+		top: 90rpx;
+		right: 40rpx;
+		width: 50rpx;
+		height: 50rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 99;
+	}
+
+	.close-icon {
+		font-size: 50rpx;
+		color: #8892b0;
+		font-weight: normal;
+	}
+
+	.content-scroll {
+		flex: 1;
+		width: 100%;
+		height: 0;
+		box-sizing: border-box;
+	}
+
+	.dossier-content {
+		padding: 40rpx;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.section-block {
+		display: flex;
+		flex-direction: column;
+		margin-bottom: 40rpx;
+	}
+
+	.section-title {
+		font-size: 30rpx;
+		font-weight: bold;
+		color: #a8b2d1;
+		display: flex;
+		font-family: monospace;
+		margin-bottom: 30rpx;
+		padding-left: 20rpx;
+		border-left: 6rpx solid #00e4ff;
+	}
+
+	.paragraph {
+		font-size: 26rpx;
+		color: #f0f6fc;
+		line-height: 1.6;
+	}
+
+	.policy-sub-title {
+		font-weight: bold;
+		color: #a8b2d1;
+		margin-top: 24rpx;
+		display: flex;
+	}
+
+	.tech-item {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12rpx;
+	}
+
+	.tech-key {
+		font-size: 26rpx;
+		color: #8892b0;
+		margin-right: 20rpx;
+		font-family: monospace;
+	}
+
+	.tech-value {
+		flex: 1;
+		font-size: 26rpx;
+		color: #f0f6fc;
+		font-family: monospace;
+	}
+
+	.link-style {
+		color: #1f6feb;
+	}
+</style>

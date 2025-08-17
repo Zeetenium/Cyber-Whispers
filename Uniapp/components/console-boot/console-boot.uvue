@@ -1,0 +1,137 @@
+<template>
+	<view class="console-overlay" :style="{ opacity: overlayOpacity }" @touchstart="handleScreenTap">
+		<view class="console-container">
+			<text class="console-text">{{ displayText }}</text>
+		</view>
+	</view>
+</template>
+
+<script setup>
+const emit = defineEmits(['boot-finished']);
+
+const overlayOpacity = ref(0);
+const isShuttingDown = ref(false);
+const displayText = ref('');
+
+let bootInterval = 0;
+
+const getDayMessage = () => {
+    const hour = new Date().getHours();
+	if (hour < 4) return "晚上好";
+    if (hour < 12) return "上午好";
+    if (hour < 18) return "下午好";
+    return "晚上好";
+};
+
+const today = new Date();
+const dateString = `${today.getFullYear()}年${(today.getMonth() + 1).toString().padStart(2, '0')}月${today.getDate().toString().padStart(2, '0')}日`;
+const dayOfWeek = `星期${['日', '一', '二', '三', '四', '五', '六'][today.getDay()]}`;
+
+const bootLog = `> AUTH: USER_SESSION_TOKEN...VALIDATED
+> CONNECTING TO [MAIN_FRAME]...OK
+> DETECTING ENVIRONMENT LANGUAGE...成功
+> ${dateString} ${dayOfWeek}
+
+> 亲爱的用户, ${getDayMessage()}。
+
+> 欢迎来到这片代码构成的赛博空间。
+> 本系统并非为特定任务而生，它是我在全栈领域探
+  索时留下的数字足迹，一个学习与实践的试验场。
+> 它存在的意义，是作为代码参考、一个练习PR的靶
+  场，或仅仅是供同好赏玩的数字奇观。
+> 如果你希望为这片空间注入新的活力，或在其中发
+  现了值得探讨的细节，
+> 欢迎通过[GitHub]或[Bilibili]与我进行联系。
+  你的每一次思想碰撞，都将让这个世界更加完整。
+
+> 广播系统通知完毕
+> 等待输入...`;
+
+const startBootAnimation = () => {
+	let index = 0;
+	const typeSpeed = 60; // 打字速度
+	
+	bootInterval = setInterval(() => {
+		if (index < bootLog.length) {
+			displayText.value = bootLog.substring(0, index + 1);
+			index++;
+		} else {
+			clearInterval(bootInterval);
+		}
+	}, typeSpeed);
+};
+
+onMounted(() => {
+	nextTick(() => {
+		overlayOpacity.value = 0.9;
+	});
+
+
+	setTimeout(() => {
+		startBootAnimation();
+	}, 1500);
+});
+
+const shutdownConsole = () => {
+	if (isShuttingDown.value) {
+		return;
+	}
+	
+	isShuttingDown.value = true;
+	overlayOpacity.value = 0;
+	
+	if (bootInterval > 0) {
+		clearInterval(bootInterval);
+	}
+	
+	setTimeout(() => {
+		emit('boot-finished');
+	}, 2000);
+};
+
+// 点击关闭
+const handleScreenTap = () => {
+	if (isShuttingDown.value) {
+		return;
+	}
+	if (bootInterval > 0) {
+		clearInterval(bootInterval);
+		displayText.value = bootLog; 
+		bootInterval = 0; 
+		return;
+	}
+	shutdownConsole();
+};
+
+</script>
+
+<style scoped>
+.console-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: #000; 
+	z-index: 9999;
+	transition: all 2s;
+}
+
+.console-container {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: 60rpx; 
+	height: 1200rpx;
+	pointer-events: none;
+}
+
+.console-text {
+	color: #00e0ff;
+	font-size: 25rpx;
+	font-weight: bold;
+	font-family: monospace;
+	line-height: 60rpx;
+	text-align: left;
+}
+</style>

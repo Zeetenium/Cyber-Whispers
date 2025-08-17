@@ -1,0 +1,93 @@
+<template>
+	<view class="container">
+		<view class="tab-item" @click="switchTab(0)">
+			<image 
+				class="tab-icon" 
+				:src="activeTab === 0 ? '/static/tabbar/home-active.png' : '/static/tabbar/home-normal.png'" 
+				mode="aspectFit">
+			</image>
+		</view>
+		
+		<view class="center-btn" @click="handleCenterClick">
+			<text v-if="activeTab === 0" class="plus-icon">+</text>
+			<text v-else class="star-icon">★</text>
+		</view>
+		
+		<view class="tab-item" @click="switchTab(1)">
+			<image 
+				class="tab-icon" 
+				:src="activeTab === 1 ? '/static/tabbar/user-active.png' : '/static/tabbar/user-normal.png'" 
+				mode="aspectFit">
+			</image>
+		</view>
+	</view>
+</template>
+
+<script>
+	export default {
+		name:"MyTabBar", 
+		props: {
+			activeTab: {
+				type: Number,
+				default: 0
+			}
+		},
+		emits: ['tab-change'],
+		methods: {
+			switchTab(index:number) {
+				this.$emit('tab-change', index)
+			},
+			handleCenterClick() {
+				if (this.activeTab === 0) {
+					uni.$emit('triggerWriteModal');
+				} else {
+					uni.$emit('triggerConsoleBoot');
+				}
+			}
+		}
+	}
+</script>
+
+<style scoped>
+	.container {
+		height: 7%;
+		background-color: #0a0a1a;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-around;
+	}
+	
+	.tab-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		flex: 1;
+	}
+	
+	.tab-icon {
+		width: 24px;
+		height: 24px;
+	}
+	
+	.center-btn {
+		width: 40px;
+		height: 40px;
+		background-color: #007AFF;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.plus-icon {
+		color: white;
+		font-size: 24px;
+		font-weight: bold;
+	}
+	.star-icon {
+		color: white;
+		font-size: 16px;
+	}
+</style>

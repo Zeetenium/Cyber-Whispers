@@ -1,0 +1,62 @@
+<template>
+	<view>
+		<view :style="{ height: webviewHeight + 'px' }">
+			<view class="content">
+				<home-content v-show="activeTab=== 0"></home-content>
+				<user-content v-show="activeTab=== 1" :is-logged-in="isLoggedIn"></user-content>
+			</view>
+			<my-tab-bar :active-tab="activeTab" @tab-change="onTabChange"></my-tab-bar>
+		</view>
+		<console-boot 
+			v-if="showConsoleBoot" 
+			@boot-finished="showConsoleBoot = false">
+		</console-boot>
+	</view>
+</template>
+
+<script setup>
+	const webviewHeight = ref(0);
+	const activeTab = ref(0);
+	const isLoggedIn = ref(false);
+	const showConsoleBoot = ref(false);
+	
+	const handleTriggerConsoleBoot = () => {
+		showConsoleBoot.value = true;
+	};
+
+	function checkLoginStatus() {
+		const loggedInStatus = uni.getStorageSync('isLoggedIn');
+		isLoggedIn.value = (loggedInStatus === true);
+	}
+
+	const handleLoginStateChange = () => {
+		checkLoginStatus();
+	};
+
+	onMounted(() => {
+		const res = uni.getSystemInfoSync();
+		webviewHeight.value = res.windowHeight;
+		checkLoginStatus();
+
+		uni.$on('loginStateChanged', handleLoginStateChange);
+		uni.$on('triggerConsoleBoot', handleTriggerConsoleBoot); 
+	});
+
+	onUnmounted(() => {
+		uni.$off('loginStateChanged', handleLoginStateChange);
+		uni.$off('triggerConsoleBoot', handleTriggerConsoleBoot); 
+	});
+
+	function onTabChange(index : number) {
+		activeTab.value = index;
+		if (index === 1) {
+			checkLoginStatus();
+		}
+	}
+</script>
+
+<style scoped>
+	.content {
+		height: 93%;
+	}
+</style>

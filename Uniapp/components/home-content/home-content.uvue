@@ -1,0 +1,366 @@
+<template>
+	<view class="home-content-container">
+		<web-view id="wv" :src="url" @load="handleWebViewLoaded" @message="handleWebViewMessage"></web-view>
+	</view>
+</template>
+
+<script setup>
+	const url = ref('/hybrid/html/index.html');
+
+	let webviewRef : WebviewContext | null = null;
+
+	// 获取留言列表
+	const fetchNotesAndSendToWebview = async () => {
+		try {
+			const notesApi = uniCloud.importObject('notes', { customUI: true });
+
+			const storedUserInfoRaw = uni.getStorageSync('user-info');
+			const storedUserInfo = (storedUserInfoRaw != null && typeof storedUserInfoRaw === 'object') ? storedUserInfoRaw as UTSJSONObject : null;
+			const token = uni.getStorageSync('token') as string | null;
+			const userId = storedUserInfo != null ? storedUserInfo['_id'] as string : null;
+
+			const params : UTSJSONObject = {};
+			if (userId != null && token != null) {
+				params['userId'] = userId;
+				params['token'] = token;
+			}
+			const result = await notesApi.getList(params);
+
+			if (result.errCode == 0 && result.data != null) {
+				const notesJson = JSON.stringify(result.data);
+				const currentWebview = webviewRef;
+				if (currentWebview != null) {
+					currentWebview.evalJS(`window.receiveNotes(${notesJson})`);
+				}
+			} else {
+				console.error('uniapp: 获取留言失败', result.msg);
+			}
+		} catch (e) {
+			console.error('uniapp: 调用云函数异常', e);
+		}
+	};
+	
+	// 发布留言逻辑
+	const publishNote = async (payload : UTSJSONObject) => {
+		const storedUserInfoRaw = uni.getStorageSync('user-info');
+		const storedUserInfo = (storedUserInfoRaw != null && typeof storedUserInfoRaw === 'object') ? storedUserInfoRaw as UTSJSONObject : null;
+		const token = uni.getStorageSync('token') as string | null;
+		const userId = storedUserInfo != null ? storedUserInfo['_id'] as string : null;
+	
+		if (userId == null || token == null) {
+			uni.showToast({ title: '请先登录', icon: 'none' });
+			return;
+		}
+	
+		const payloadWithAuth = {
+			text: payload['message'] as string,
+			color: payload['color'] as number,
+			name: payload['name'] as string,
+			userId: userId,
+			token: token
+		};
+	
+		try {
+			uni.showLoading({ title: '发布中...' });
+			const notesApi = uniCloud.importObject('notes');
+			const result = await notesApi.addNote(payloadWithAuth);
+			uni.hideLoading();
+	
+			if (result.errCode === 0) {
+				uni.showToast({ title: '发布成功！', icon: 'success' });
+				fetchNotesAndSendToWebview();
+				const currentUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+				if (currentUserInfo != null) {
+					let publishCount = currentUserInfo['publishCount'] as number | null ?? 0;
+					currentUserInfo['publishCount'] = publishCount + 1;
+					uni.setStorageSync('user-info', currentUserInfo);
+					uni.$emit('userInfoChanged');
+				}
+			} else {
+				const msg = result.msg;
+				uni.showToast({ title: msg != null ? msg as string : '发布失败', icon: 'none' });
+			}
+		} catch (e) {
+			uni.hideLoading();
+			console.error('uniapp: 调用 addNote 云函数异常', e);
+			uni.showToast({ title: '网络错误，请稍后再试', icon: 'none' });
+		}
+	};
+	
+	// 点赞逻辑
+	const likeNote = async (payload : UTSJSONObject, correlationId : string) => {
+		const noteId = payload['noteId'] as string;
+
+		const currentWebview = webviewRef;
+		if (currentWebview == null) return;
+
+		const storedUserInfo = uni.getStorageSync('user-info');
+		const token = uni.getStorageSync('token') as string | null;
+		const userInfo = (storedUserInfo != null && typeof storedUserInfo === 'object') ? storedUserInfo as UTSJSONObject : null;
+		const userId = userInfo != null ? userInfo['_id'] as string : null;
+
+		if (userId == null || token == null) {
+			uni.showToast({ title: '请先登录', icon: 'none' });
+			currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'error', error: '请先登录' })`);
+			return;
+		}
+
+		const payloadWithAuth = {
+			noteId: noteId, 
+			userId: userId, 
+			token: token
+		};
+
+		try {
+			const notesApi = uniCloud.importObject('notes', { customUI: true });
+			const result = await notesApi.likeNote(payloadWithAuth);
+
+			if (result.errCode === 0) {
+				const currentUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+				if (currentUserInfo != null) {
+					let likeCount = currentUserInfo['likeCount'] as number | null ?? 0;
+					currentUserInfo['likeCount'] = likeCount + 1;
+					uni.setStorageSync('user-info', currentUserInfo);
+					uni.$emit('userInfoChanged');
+				}
+				currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'success'})`);
+			} else {
+				const msg = result.msg;
+				uni.showToast({ title: msg != null ? msg as string : '点赞失败', icon: 'none' });
+				currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'error', error: '${msg}' })`);
+			}
+		} catch (e) {
+			uni.showToast({ title: '网络错误，请稍后再试', icon: 'none' });
+			currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'error', error: '网络错误，请稍后再试' })`);
+		}
+	};
+
+	// 评论逻辑
+	const publishComment = async (payload : UTSJSONObject, correlationId : string) => {
+		const noteId = payload['noteId'] as string;
+		const text = payload['text'] as string;
+
+		const currentWebview = webviewRef;
+		if (currentWebview == null) return;
+
+		const storedUserInfoRaw = uni.getStorageSync('user-info');
+		const token = uni.getStorageSync('token') as string | null;
+
+		const storedUserInfo = (storedUserInfoRaw != null && typeof storedUserInfoRaw === 'object') ? storedUserInfoRaw as UTSJSONObject : null;
+		const userId = storedUserInfo != null ? storedUserInfo['_id'] as string : null;
+
+		if (userId == null || token == null) {
+			uni.showToast({ title: '请先登录', icon: 'none' });
+			currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'error', error: '请先登录' })`);
+			return;
+		}
+
+		const payloadWithAuth = {
+			noteId: noteId,
+			text: text,
+			userId: userId,
+			token: token
+		};
+
+		try {
+			const notesApi = uniCloud.importObject('notes', { customUI: true });
+			const result = await notesApi.addComment(payloadWithAuth);
+
+			if (result.errCode === 0) {
+				currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'success' })`);
+				const currentUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+				if (currentUserInfo != null) {
+					let commentCount = currentUserInfo['commentCount'] as number | null ?? 0;
+					currentUserInfo['commentCount'] = commentCount + 1;
+					uni.setStorageSync('user-info', currentUserInfo);
+					uni.$emit('userInfoChanged');
+				}
+			} else {
+				const msg = result.msg;
+				uni.showToast({ title: msg != null ? msg as string : '发布失败', icon: 'none' });
+				currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'error', error: '${msg}' })`);
+			}
+		} catch (e) {
+			uni.hideLoading();
+			console.error('uniapp: 调用 addComment 云函数异常', e);
+			uni.showToast({ title: '网络错误，请稍后再试', icon: 'none' });
+			currentWebview.evalJS(`window.resolveAction({ correlationId: '${correlationId}', status: 'error', error: '网络错误，请稍后再试' })`);
+		}
+	};
+
+	// 举报逻辑
+	const reportNote = async (payload : UTSJSONObject) => {
+		const noteId = payload['noteId'] as string;
+
+		const storedUserInfoRaw = uni.getStorageSync('user-info');
+		const storedUserInfo = (storedUserInfoRaw != null && typeof storedUserInfoRaw === 'object') ? storedUserInfoRaw as UTSJSONObject : null;
+		const token = uni.getStorageSync('token') as string | null;
+		const userId = storedUserInfo != null ? storedUserInfo['_id'] as string : null;
+
+		if (userId == null || token == null) {
+			console.error('uniapp: 举报失败，用户未登录或Token不存在');
+			uni.showToast({ title: '请先登录', icon: 'none' });
+			return;
+		}
+
+		const payloadWithAuth = {
+			noteId: noteId,
+			userId: userId,
+			token: token
+		};
+
+		try {
+			const notesApi = uniCloud.importObject('notes');
+			const result = await notesApi.reportNote(payloadWithAuth);
+
+			if (result.errCode === 0) {
+				console.log('uniapp: 举报成功');
+				uni.showToast({ title: '举报已提交，感谢反馈', icon: 'none' });
+			} else {
+				console.error('uniapp: 举报失败', result.msg);
+				const msg = result.msg;
+				uni.showToast({ title: msg != null ? msg as string : '举报失败', icon: 'none' });
+			}
+		} catch (e) {
+			console.error('uniapp: 调用 reportNote 云函数异常', e);
+			uni.showToast({ title: '网络错误，请稍后再试', icon: 'none' });
+		}
+	};
+
+	// H5页面加载完成后 主动获取数据并推送过去
+	let isWebViewLoaded = false;
+	const handleWebViewLoaded = () => {
+		if (isWebViewLoaded) {
+			return;
+		}
+		isWebViewLoaded = true; 
+		fetchNotesAndSendToWebview();
+		const storedUserInfoRaw = uni.getStorageSync('user-info');
+		const storedUserInfo = (storedUserInfoRaw != null && typeof storedUserInfoRaw === 'object') ? storedUserInfoRaw as UTSJSONObject : null;
+		const currentWebview = webviewRef;
+		// 传递用户信息
+		if (storedUserInfo != null && currentWebview != null) {
+			const userInfoJson = JSON.stringify(storedUserInfo);
+			currentWebview.evalJS(`window.receiveUserInfo(${userInfoJson})`);
+		}
+		// 传递用户设置（性能模式）
+		if (currentWebview != null) {
+			const performanceMode = uni.getStorageSync('performanceMode') === true;
+			currentWebview.evalJS(`window.setPerformanceMode(${performanceMode})`);
+		}
+	};
+	
+	// 更新用户数据
+	const updateWebViewUserInfo = () => {
+		const storedUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+		const currentWebview = webviewRef;
+	
+		if (storedUserInfo != null && currentWebview != null) {
+			const userInfoJson = JSON.stringify(storedUserInfo);
+			currentWebview.evalJS(`window.receiveUserInfo(${userInfoJson})`);
+		} else {
+			console.log('home-content: 未找到用户信息或 web-view 未准备好，取消同步');
+		}
+	};
+	
+	 // 接收H5页面传递过来的事件
+	const handleWebViewMessage = (event: UniWebViewMessageEvent) => {
+		for (const message of event.detail.data) {
+			const msgData = message as UTSJSONObject;
+			const type = msgData['type'] as string;
+			const payload = msgData['payload'] as UTSJSONObject | null;
+
+			if (payload == null) continue; 
+
+			switch (type) {
+				case 'addNote':
+					publishNote(payload);
+					break;
+	
+				case 'addComment': {
+					const correlationId = msgData['correlationId'] as string | null;
+					if (correlationId != null) {
+						publishComment(payload, correlationId);
+					} else {
+						console.error('uniapp: addComment 消息中缺少 correlationId:', msgData);
+					}
+					break;
+				}
+	
+				case 'likeNote': {
+					const correlationId = msgData['correlationId'] as string | null;
+					if (correlationId != null) {
+						likeNote(payload, correlationId);
+					} else {
+						console.error('uniapp: likeNote 消息中缺少 correlationId:', msgData);
+					}
+					break;
+				}
+	
+				case 'reportNote':
+					reportNote(payload);
+					break;
+	
+				default:
+					console.warn('uniapp: 收到未知的 webview 消息类型:', type);
+					break;
+			}
+		}
+	};
+
+	// 显示发布留言模态框
+	const showWriteModal = () => {
+		const currentWebview = webviewRef;
+		if (currentWebview != null) {
+			currentWebview.evalJS(`window.dispatchEvent(new CustomEvent('showWriteModal'))`);
+		} else {
+			console.error('无法获取到 web-view 组件实例');
+		}
+	};
+	
+	// 控制“性能模式”开关
+	const setWebViewPerformanceMode = (isEnabled : boolean) => {
+		const currentWebview = webviewRef;
+		if (currentWebview != null) {
+			currentWebview.evalJS(`window.setPerformanceMode(${isEnabled})`);
+		} else {
+			console.error('无法获取到 web-view 组件实例');
+		}
+	};
+	
+	// 控制“只看我的”开关
+	const setWebViewFilterMode = (isEnabled : boolean) => {
+		const currentWebview = webviewRef;
+		if (currentWebview != null) {
+			currentWebview.evalJS(`window.setFilterMode(${isEnabled})`);
+		} else {
+			console.error('无法获取到 web-view 组件实例');
+		}
+	};
+
+	onMounted(() => {
+		webviewRef = uni.createWebviewContext("wv", getCurrentInstance()!.proxy!);
+
+		uni.$on('triggerWriteModal', showWriteModal);
+		uni.$on('performanceModeChanged', setWebViewPerformanceMode);
+		uni.$on('userInfoChanged', updateWebViewUserInfo);
+		uni.$on('forceRefreshNotes', fetchNotesAndSendToWebview);
+		uni.$on('filterModeChanged', setWebViewFilterMode);
+	});
+
+	onUnmounted(() => {
+		uni.$off('triggerWriteModal', showWriteModal);
+		uni.$off('performanceModeChanged', setWebViewPerformanceMode);
+		uni.$off('userInfoChanged', updateWebViewUserInfo);
+		uni.$off('forceRefreshNotes', fetchNotesAndSendToWebview);
+		uni.$off('filterModeChanged', setWebViewFilterMode);
+	});
+</script>
+
+<style>
+	.home-content-container,
+	.web-view {
+		width: 100%;
+		height: 100%;
+	}
+</style>

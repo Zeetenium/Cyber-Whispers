@@ -1,0 +1,52 @@
+# 日志文件
+**/logs
+**/*.log
+H5/npm-debug.log*
+H5/yarn-debug.log*
+H5/yarn-error.log*
+
+# 运行时数据
+**/pids
+**/*.pid
+**/*.seed
+**/*.pid.lock
+
+# 依赖目录
+/H5/node_modules
+
+# Vite/Vue 构建产物
+/H5/dist
+
+# Uni-app 编译产物和缓存
+/Uniapp/unpackage
+/Uniapp/build
+
+# 环境变量文件
+**/.env
+**/.env.*
+!**/.env.example
+
+# UniCloud 核心配置文件，包含所有密钥
+/Uniapp/uni_modules/uni-config-center/uniCloud/common/uni-config-center/config.json
+
+# 忽略所有云函数下的 config.json 文件
+/Uniapp/uniCloud-aliyun/cloudfunctions/*/config.json
+
+# 操作系统
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 编辑器
+.idea/
+.vscode/
+.hbuilderx/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,17 @@
+{
+	"name": "delete-old-notifications",
+	"version": "1.0.0",
+	"description": "定时删除7天前的旧通知",
+	"main": "index.js",
+	"author": "",
+	"license": "ISC",
+	"cloudfunction-config": {
+		"triggers": [
+			{
+				"name": "dailyCleanup", 
+				"type": "timer",
+				"config": "0 0 3 * * ? *"
+			}
+		]
+	}
+}

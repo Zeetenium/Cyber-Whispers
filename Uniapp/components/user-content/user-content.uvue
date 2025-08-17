@@ -1,0 +1,736 @@
+<template>
+	<view class="header"></view>
+	<view class="profile-page">
+		<!-- 已登录视图 -->
+		<view v-if="isLoggedIn" class="content-wrapper">
+
+			<view class="info-card">
+				<view class="ascii-art-container">
+					<image src="/static/hacker.png" class="hacker-avatar" mode="aspectFill"></image>
+				</view>
+				<view class="user-details">
+					<view class="nickname-section">
+						<input v-if="isEditingNickname" class="nickname-input" v-model="newNickname" :focus="true"
+							@confirm="saveNickname" />
+						<text v-else class="nickname" style="margin-right: 20rpx;">{{nickname}}</text>
+
+						<image v-if="isEditingNickname" src="/static/save.png" class="edit-icon" mode="aspectFit"
+							@tap="toggleEditMode" />
+						<image v-else src="/static/edit.png" class="edit-icon" mode="aspectFit" @tap="toggleEditMode" />
+					</view>
+					<view class="stats-section">
+						<view class="stat-item">
+							<text class="stat-value">{{ likeCount }}</text>
+							<text class="stat-label">点赞</text>
+						</view>
+						<view class="stat-item">
+							<text class="stat-value">{{ commentCount }}</text>
+							<text class="stat-label">评论</text>
+						</view>
+						<view class="stat-item">
+							<text class="stat-value">{{ publishCount }}</text>
+							<text class="stat-label">发布</text>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<view class="notifications-container">
+				<view class="notifications-header">
+					<text class="notifications-title">消息中心</text>
+					<text class="refresh-icon" @tap="fetchNotifications">↺</text>
+				</view>
+
+				<scroll-view class="notifications-list" scroll-y="true">
+					<view v-if="isFetchingNotifications">
+						<text class="message-placeholder">正在加载...</text>
+					</view>
+
+					<view v-else-if="notifications.length === 0">
+						<text class="message-placeholder">暂无新消息</text>
+					</view>
+
+					<view v-else v-for="(item) in notifications" :key="item._id" class="notification-item">
+						<view class="notification-content">
+							<text class="notification-content">
+								<text class="actor-name">{{ getActorName(item) }}</text>
+								<text class="note-content" v-if="item['type'] == 'like'"> 点赞了你的留言</text>
+								<text class="note-content" v-else> 评论了你的留言</text>
+								<text class="note-content">"{{ item['noteContent'] as string }}"</text>
+								<text class="note-content" v-if="item['type'] == 'comment'"> :</text>
+								<text class="note-content"
+									v-if="item['commentContent'] != null">"{{ item['commentContent'] as string }}"</text>
+							</text>
+						</view>
+						<text class="notification-time">{{ formatTime(item['createTime'] as string) }}</text>
+					</view>
+				</scroll-view>
+			</view>
+
+			<view class="settings-section">
+				<view class="setting-item">
+					<view class="setting-text-container">
+						<text class="setting-label">性能模式</text>
+						<text class="setting-description">若在快速滑动留言时遇到卡顿或闪烁，请开启此功能。</text>
+					</view>
+					<switch :checked="switchChecked" @change="onPerformanceModeChange" class="custom-switch"></switch>
+				</view>
+				<view class="setting-item">
+					<view class="setting-text-container">
+						<text class="setting-label">只看我的留言</text>
+						<text class="setting-description">开启后，留言板将只显示由你发布的动态。</text>
+					</view>
+					<switch :checked="showMyNotesOnly" @change="onFilterModeChange" class="custom-switch"></switch>
+				</view>
+				<view class="setting-item" :class="{ 'setting-item-active': activeItem === 'refresh' }"
+					@tap="forceRefreshApp" @touchstart="onItemTouchStart('refresh')" @touchend="onItemTouchEnd">
+					<view class="setting-text-container">
+						<text class="setting-label">刷新APP</text>
+						<text class="setting-description">此操作将从云端强制同步最新数据，以解决潜在的数据不一致问题。</text>
+					</view>
+					<text class="arrow-icon">↻</text>
+				</view>
+				<view class="setting-item no-border" :class="{ 'setting-item-active': activeItem === 'about' }"
+					@tap="goToAboutPage" @touchstart="onItemTouchStart('about')" @touchend="onItemTouchEnd">
+					<text class="setting-label">关于</text>
+					<text class="arrow-icon">></text>
+				</view>
+				<view class="logout-button" @tap="logout">
+					<text class="logout-button-text">退出登录</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 未登录视图 -->
+		<view v-else class="login-prompt-section">
+			<text class="prompt-text">您尚未登录</text>
+			<text class="prompt-subtext">登录后即可查看您的个人主页</text>
+			<view class="login-redirect-button" @tap="goToLogin">
+				<text class="login-redirect-button-text">前往登录</text>
+			</view>
+		</view>
+
+	</view>
+</template>
+
+<script setup>
+	const props = defineProps({
+		isLoggedIn: {
+			type: Boolean,
+			default: false
+		}
+	});
+
+	const switchChecked = ref(uni.getStorageSync('performanceMode') === true);
+	const nickname = ref('');
+	const likeCount = ref(0);
+	const commentCount = ref(0);
+	const publishCount = ref(0);
+	const isEditingNickname = ref(false);
+	const newNickname = ref('');
+	const activeItem = ref < string | null > (null);
+	const showMyNotesOnly = ref(false);
+	const notifications = ref < UTSJSONObject[] > ([]);
+	const isFetchingNotifications = ref(false);
+	
+	// 从通知对象中提取操作者昵称
+	const getActorName = (item: UTSJSONObject): string => {
+		const actorInfo = item['actorInfo'] as UTSJSONObject;
+		if (actorInfo != null) {
+			return actorInfo['name'] as string ?? '';
+		}
+		return '未知用户';
+	};
+	
+	// 格式化时间字符串
+	const formatTime = (dateString: string): string => {
+		if (dateString == null || dateString.trim() === '') return '';
+		const date = new Date(dateString);
+		if (isNaN(date.getTime())) return '';
+	
+		const year = date.getFullYear();
+		const month = (date.getMonth() + 1).toString().padStart(2, '0');
+		const day = date.getDate().toString().padStart(2, '0');
+		const hours = date.getHours().toString().padStart(2, '0');
+		const minutes = date.getMinutes().toString().padStart(2, '0');
+	
+		return `${year}-${month}-${day} ${hours}:${minutes}`;
+	};
+	
+	// 计算文本显示宽度
+	const calculateTextWidth = (text: string): number => {
+		if (text == null || text.length === 0) {
+			return 0;
+		}
+		const doubleByteChars = text.match(/[^\x00-\xff]/g);
+		const doubleByteCount = doubleByteChars != null ? doubleByteChars.length : 0;
+		return text.length + doubleByteCount;
+	};
+	
+	// 实现设置项按下变亮效果
+	const onItemTouchStart = (itemName: string) => {
+		activeItem.value = itemName;
+	};
+	const onItemTouchEnd = () => {
+		setTimeout(() => {
+			activeItem.value = null;
+		}, 150);
+	};
+	
+	// 从本地缓存加载用户信息
+	const loadUserInfo = () => {
+		const storedUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+		if (storedUserInfo != null) {
+			nickname.value = storedUserInfo['name'] as string;
+			likeCount.value = storedUserInfo['likeCount'] as number;
+			commentCount.value = storedUserInfo['commentCount'] as number;
+			publishCount.value = storedUserInfo['publishCount'] as number;
+		} else {
+			console.log('user-content: 未找到用户信息缓存');
+		}
+	};
+
+	// 从云端获取消息通知列表
+	const fetchNotifications = async () => {
+		if (isFetchingNotifications.value) return;
+		isFetchingNotifications.value = true;
+
+		try {
+			const storedUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+			const token = uni.getStorageSync('token') as string | null;
+
+			if (storedUserInfo == null || token == null) {
+				isFetchingNotifications.value = false;
+				return;
+			}
+			const userId = storedUserInfo['_id'] as string;
+
+			const usersApi = uniCloud.importObject('users');
+			const result = await usersApi.getNotifications({
+				userId: userId,
+				token: token
+			});
+
+			if (result.errCode === 0 && result.data != null) {
+				notifications.value = result.data as UTSJSONObject[];
+			} else {
+				const errMsg = result.errMsg;
+				uni.showToast({
+					title: errMsg != null ? errMsg as string : '获取通知失败',
+					icon: 'none'
+				});
+			}
+		} catch (e) {
+			uni.showToast({
+				title: '网络错误' + e,
+				icon: 'none'
+			});
+		} finally {
+			isFetchingNotifications.value = false;
+		}
+	};
+
+	// 保存用户修改的昵称
+	const saveNickname = async () => {
+		if (newNickname.value === nickname.value) {
+			isEditingNickname.value = false;
+			return;
+		}
+
+		if (newNickname.value == null || newNickname.value.trim() === '') {
+			uni.showToast({
+				title: '昵称不能为空',
+				icon: 'none'
+			});
+			return;
+		}
+		if (calculateTextWidth(newNickname.value) > 20) {
+			uni.showToast({
+				title: '昵称过长(最多10个汉字或20个字符)',
+				icon: 'none'
+			});
+			return;
+		}
+
+		uni.showLoading({
+			title: '保存中...'
+		});
+
+		try {
+			const storedUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+			const token = uni.getStorageSync('token') as string | null;
+
+			if (storedUserInfo == null || token == null) {
+				uni.showToast({
+					title: '登录状态已失效，请重试',
+					icon: 'none'
+				});
+				uni.hideLoading();
+				isEditingNickname.value = false;
+				return;
+			}
+			const userId = storedUserInfo['_id'] as string;
+
+			const usersApi = uniCloud.importObject('users');
+			const result = await usersApi.updateNickname({
+				userId: userId,
+				newName: newNickname.value,
+				token: token
+			});
+
+			if (result.errCode === 0) {
+				nickname.value = newNickname.value;
+				storedUserInfo['name'] = newNickname.value;
+				uni.setStorageSync('user-info', storedUserInfo);
+				uni.$emit('userInfoChanged');
+				uni.showToast({
+					title: '保存成功',
+					icon: 'success'
+				});
+			} else {
+				const errMsg = result.errMsg;
+				uni.showToast({
+					title: errMsg != null ? errMsg as string : '保存失败',
+					icon: 'none'
+				});
+			}
+
+		} catch (e) {
+			uni.showToast({
+				title: '网络错误' + e,
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+			isEditingNickname.value = false;
+		}
+	};
+
+	// 切换昵称编辑模式
+	const toggleEditMode = () => {
+		if (isEditingNickname.value) {
+			saveNickname();
+		} else {
+			isEditingNickname.value = true;
+			newNickname.value = nickname.value;
+		}
+	};
+
+	// “性能模式”开关切换处理
+	const onPerformanceModeChange = () => {
+		switchChecked.value = !switchChecked.value;
+		uni.setStorageSync('performanceMode', switchChecked.value);
+		uni.$emit('performanceModeChanged', switchChecked.value);
+	};
+
+	// “只看我的”开关切换处理
+	const onFilterModeChange = () => {
+		showMyNotesOnly.value = !showMyNotesOnly.value;
+		uni.$emit('filterModeChanged', showMyNotesOnly.value);
+	};
+
+	// 强制从云端刷新数据
+	const forceRefreshApp = async () => {
+		uni.showLoading({
+			title: '正在刷新...'
+		});
+
+		try {
+			const storedUserInfo = uni.getStorageSync('user-info') as UTSJSONObject;
+			const token = uni.getStorageSync('token') as string | null;
+
+			if (storedUserInfo == null || token == null) {
+				uni.showToast({
+					title: '未登录，无需刷新',
+					icon: 'none'
+				});
+				uni.hideLoading();
+				return;
+			}
+			const userId = storedUserInfo['_id'] as string;
+
+			const usersApi = uniCloud.importObject('users');
+			const result = await usersApi.getUserProfile({
+				userId: userId,
+				token: token
+			});
+
+			if (result.errCode === 0 && result.data != null) {
+				const newUserInfo = result.data as UTSJSONObject;
+				uni.setStorageSync('user-info', newUserInfo);
+				console.log('user-content: 用户信息已从云端同步');
+
+				uni.$emit('userInfoChanged');
+				console.log('user-content: 已发出 userInfoChanged 通知');
+
+				uni.$emit('forceRefreshNotes');
+				console.log('user-content: 已发出 forceRefreshNotes 通知');
+
+				uni.showToast({
+					title: '刷新成功',
+					icon: 'success'
+				});
+			} else {
+				const errMsg = result.errMsg;
+				uni.showToast({
+					title: errMsg != null ? errMsg as string : '刷新失败',
+					icon: 'none'
+				});
+			}
+			fetchNotifications();
+		} catch (e) {
+			uni.showToast({
+				title: '网络错误，请稍后重试',
+				icon: 'none'
+			});
+			console.error('刷新失败', e);
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	const logout = () => {
+		uni.showModal({
+			title: '提示',
+			content: '确定要退出登录吗？',
+			success: function(res) {
+				if (res.confirm) {
+					uni.removeStorageSync('isLoggedIn');
+					uni.removeStorageSync('token');
+					uni.removeStorageSync('user-info');
+					uni.removeStorageSync('performanceMode');
+					uni.$emit('loginStateChanged');
+				} 
+			}
+		});
+	};
+
+	const goToLogin = () => {
+		uni.navigateTo({
+			url: '/pages/login/login'
+		});
+	};
+
+	const goToAboutPage = () => {
+		uni.navigateTo({
+			url: '/pages/about/about'
+		});
+	};
+
+	// 监听 isLoggedIn 的变化
+	watch(
+		(): boolean => props.isLoggedIn,
+		(newIsLoggedIn: boolean) => {
+			if (newIsLoggedIn) {
+				loadUserInfo();
+				fetchNotifications();
+			}
+		}, {
+			immediate: true
+		}
+	);
+
+	onMounted(() => {
+		uni.$on('userInfoChanged', loadUserInfo);
+	});
+
+	onBeforeUnmount(() => {
+		uni.$off('userInfoChanged', loadUserInfo);
+	});
+</script>
+
+<style>
+	.header {
+		height: 75rpx;
+		background-color: #0A0A1ACC;
+	}
+
+	.notifications-container {
+		background-color: #0d1117;
+		border: 2rpx solid #30363d;
+		border-radius: 12rpx;
+		padding: 20rpx 30rpx;
+		margin-bottom: 40rpx;
+	}
+
+	.notifications-header {
+		position: relative;
+		padding: 10rpx 0 15rpx 0;
+		border-bottom: 2rpx solid #161b22;
+	}
+
+	.notifications-title {
+		text-align: center;
+		color: #f0f6fc;
+		font-size: 28rpx;
+		font-weight: bold;
+	}
+
+	.refresh-icon {
+		position: absolute;
+		right: 0;
+		top: 0;
+		color: #8892b0;
+		font-size: 36rpx;
+		font-weight: bold;
+	}
+
+	.notifications-list {
+		max-height: 250rpx;
+	}
+
+	.notification-item {
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid #1a2028;
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+	}
+
+	.notification-content {
+		flex: 1;
+		margin-right: 20rpx;
+	}
+
+	.actor-name {
+		color: #c9d1d9;
+		font-weight: bold;
+	}
+
+	.note-content {
+		color: #c9d1d9;
+	}
+
+	.notification-time {
+		color: #6e7681;
+		font-size: 20rpx;
+		white-space: nowrap;
+	}
+
+	.message-placeholder {
+		color: #8892b0;
+		font-size: 24rpx;
+		text-align: center;
+		padding: 60rpx 0;
+	}
+
+	.profile-page {
+		background-color: #050510;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		padding: 40rpx;
+		padding-top: 40rpx;
+		box-sizing: border-box;
+	}
+
+	.content-wrapper {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+	}
+
+	.info-card {
+		background-color: #0d1117;
+		border: 2rpx solid #30363d;
+		border-radius: 12rpx;
+		padding: 30rpx;
+		margin-bottom: 40rpx;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.ascii-art-container {
+		padding-right: 30rpx;
+		border-right: 2rpx solid #30363d;
+		margin-right: 30rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.hacker-avatar {
+		width: 120rpx;
+		height: 120rpx;
+	}
+
+	.user-details {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.nickname-section {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 40rpx;
+		margin-left: 40rpx;
+		margin-right: 20rpx;
+		margin-top: 10rpx;
+		min-height: 60rpx;
+	}
+
+	.nickname {
+		color: #f0f6fc;
+		font-size: 36rpx;
+		font-weight: bold;
+		font-family: monospace;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.stats-section {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-around;
+	}
+
+	.stat-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.stat-value {
+		color: #f0f6fc;
+		font-size: 32rpx;
+		font-weight: normal;
+		font-family: monospace;
+	}
+
+	.stat-label {
+		color: #8892b0;
+		font-size: 22rpx;
+		margin-top: 8rpx;
+	}
+
+	.settings-section {
+		background-color: #0d1117;
+		border: 2rpx solid #30363d;
+		border-radius: 12rpx;
+		padding: 20rpx 30rpx;
+	}
+
+	.setting-item {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx 10rpx;
+		border-bottom: 2rpx solid #161b22;
+	}
+
+	.setting-item-active {
+		background-color: #161b22;
+	}
+
+	.no-border {
+		border-bottom: none;
+	}
+
+	.setting-label {
+		color: #f0f6fc;
+		font-size: 28rpx;
+	}
+
+	.arrow-icon {
+		color: #8892b0;
+		font-size: 28rpx;
+		font-weight: bold;
+	}
+
+	.logout-button {
+		background-color: #1f6feb;
+		border-radius: 8rpx;
+		padding: 24rpx;
+		margin-top: 40rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.logout-button-text {
+		color: #ffffff;
+		font-size: 28rpx;
+		font-weight: bold;
+	}
+
+	.login-prompt-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		flex-grow: 1;
+		width: 100%;
+	}
+
+	.prompt-text {
+		color: #f0f6fc;
+		font-size: 40rpx;
+		font-weight: bold;
+		margin-bottom: 20rpx;
+		text-align: center;
+	}
+
+	.prompt-subtext {
+		color: #8892b0;
+		font-size: 28rpx;
+		margin-bottom: 60rpx;
+	}
+
+	.login-redirect-button {
+		background-color: #1f6feb;
+		border-radius: 8rpx;
+		padding: 24rpx 80rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.login-redirect-button-text {
+		color: #ffffff;
+		font-size: 28rpx;
+		font-weight: bold;
+	}
+
+	.edit-icon {
+		width: 32rpx;
+		height: 32rpx;
+		flex-shrink: 0;
+	}
+
+	.nickname-input {
+		color: #f0f6fc;
+		font-size: 36rpx;
+		font-weight: bold;
+		font-family: monospace;
+		background-color: transparent;
+		border: none;
+		padding: 0;
+		flex: 1;
+		margin-right: 20rpx;
+	}
+
+	.custom-switch {
+		transform: scale(0.8);
+	}
+
+	.setting-text-container {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		margin-right: 20rpx;
+	}
+
+	.setting-description {
+		color: #8892b0;
+		font-size: 18rpx;
+		margin-top: 8rpx;
+	}
+</style>
