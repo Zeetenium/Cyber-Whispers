@@ -16,6 +16,7 @@ H5/yarn-error.log*
 
 # Vite/Vue 构建产物
 /H5/dist
+/Uniapp/hybrid
 
 # Uni-app 编译产物和缓存
 /Uniapp/unpackage

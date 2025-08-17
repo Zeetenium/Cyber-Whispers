@@ -65,7 +65,7 @@
 
 				<view class="section-block">
 					<text class="section-title">相关档案</text>
-					<view class="tech-item" @click="copyLink('/')">
+					<view class="tech-item" @click="copyLink('https://juejin.cn/post/7539031990184738826')">
 						<text class="tech-key">开发纪实:</text>
 						<text class="tech-value link-style">掘金博客</text>
 					</view>
